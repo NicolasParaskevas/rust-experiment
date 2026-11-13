@@ -75,8 +75,7 @@ fn parse_transaction(record: &StringRecord) -> io::Result<Transaction> {
             _ => Decimal::ZERO,
         }
     } else {
-        let amount: Decimal = amount_text
-            .parse()
+        let amount = Decimal::from_str_exact(amount_text)
             .map_err(|error| invalid_data(format!("invalid amount: {error}")))?;
         if amount.scale() > 4 {
             return Err(invalid_data("amount must have at most four decimal places"));
@@ -98,7 +97,11 @@ fn field<'a>(record: &'a StringRecord, index: usize, name: &str) -> io::Result<&
 }
 
 fn csv_error(error: csv::Error) -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidData, error)
+    if error.is_io_error() {
+        io::Error::other(error)
+    } else {
+        io::Error::new(io::ErrorKind::InvalidData, error)
+    }
 }
 
 fn invalid_data(message: impl Into<String>) -> io::Error {
